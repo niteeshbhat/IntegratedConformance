@@ -36,14 +36,14 @@
  */
 function download_data($directory, $array_file, $is_subtitle_rep){
     global $session_dir, $progress_report, $progress_xml, $reprsentation_mdat_template, $missinglink_file, $current_adaptation_set, $current_representation, 
-            $hls_byte_range_begin, $hls_byte_range_size, $hls_manifest, $hls_mdat_file;
+            $hls_byte_range_begin, $hls_byte_range_size, $hls_manifest, $hls_mdat_file, $current_period;
     
     if(!$hls_manifest)
         $mdat_file = str_replace(array('$AS$', '$R$'), array($current_adaptation_set, $current_representation), $reprsentation_mdat_template);
     else
         $mdat_file = $hls_mdat_file;
     
-    $sizefile = open_file($session_dir . '/' . $mdat_file . '.txt', 'a+b'); //create text file containing the original size of Mdat box that is ignored
+    $sizefile = open_file($session_dir . '/Period' .$current_period.'/'. $mdat_file . '.txt', 'a+b'); //create text file containing the original size of Mdat box that is ignored
     $initoffset = 0; // Set pointer to 0
     $totaldownloaded = 0; // bytes downloaded
     $totalDataProcessed = 0; // bytes processed within segments

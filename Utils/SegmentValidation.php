@@ -81,7 +81,7 @@ function validate_segment_hls($URL_array){
 }
 
 function assemble($path, $segment_urls, $sizearr){
-    global $session_dir, $segment_accesses, $reprsentation_template, $current_adaptation_set, $current_representation, $hls_manifest, $hls_tag;
+    global $session_dir, $segment_accesses, $reprsentation_template, $current_adaptation_set, $current_representation, $hls_manifest, $hls_tag, $current_period;
     
     $index = ($segment_accesses[$current_adaptation_set][$current_representation][0]['initialization']) ? 0 : 1;
     
@@ -90,7 +90,7 @@ function assemble($path, $segment_urls, $sizearr){
             $rep_dir = str_replace(array('$AS$', '$R$'), array($current_adaptation_set, $current_representation), $reprsentation_template);
         else
             $rep_dir = $hls_tag;
-        $fp1 = fopen($session_dir . '/' . $rep_dir . ".mp4", 'a+');
+        $fp1 = fopen($session_dir . '/Period' .$current_period.'/'. $rep_dir . ".mp4", 'a+');
         
         $segment_name = basename($segment_urls[$i]);
         if (file_exists($path . $segment_name)){
@@ -99,7 +99,7 @@ function assemble($path, $segment_urls, $sizearr){
 
             fwrite($fp1, $file2); // dump it in the container file
             fclose($fp1);
-            file_put_contents($session_dir . '/' . $rep_dir . ".txt", $index . " " . $size . "\n", FILE_APPEND); // add size to a text file to be passed to conformance software
+            file_put_contents($session_dir . '/Period' .$current_period.'/'.$rep_dir . ".txt", $index . " " . $size . "\n", FILE_APPEND); // add size to a text file to be passed to conformance software
             
             $index++; // iterate over all segments within the segments folder
         }
@@ -109,7 +109,7 @@ function assemble($path, $segment_urls, $sizearr){
 function analyze_results($returncode, $curr_adapt_dir, $rep_dir_name){
     global $session_dir, $mpd_features, $stderr_file, $leafinfo_file, $reprsentation_info_log_template, $reprsentation_error_log_template,
             $string_info, $progress_report, $progress_xml, $current_period, $current_adaptation_set, $current_representation, $atominfo_file, $sample_data,
-            $hls_manifest, $hls_tag, $hls_error_file, $hls_info_file;
+            $hls_manifest, $hls_tag, $hls_error_file, $hls_info_file,  $current_period;
     
     $adaptation_set = $mpd_features['Period'][$current_period]['AdaptationSet'][$current_adaptation_set];
     $representation = $adaptation_set['Representation'][$current_representation];
@@ -140,41 +140,41 @@ function analyze_results($returncode, $curr_adapt_dir, $rep_dir_name){
         $info_log = str_replace(array('$AS$', '$R$'), array($current_adaptation_set, $current_representation), $reprsentation_info_log_template);
     else
         $info_log = str_replace('$hls_tag$', $hls_tag, $hls_info_file);
-    rename_file($session_dir . '/' . $leafinfo_file, $session_dir . '/' . $info_log . '.txt');
-    $file_location[] = relative_path($session_dir . '/' . $info_log . '.html');
+    rename_file($session_dir . '/' . $leafinfo_file, $session_dir . '/Period' .$current_period.'/'. $info_log . '.txt');
+    $file_location[] = relative_path($session_dir . '/Period' .$current_period.'/'. $info_log . '.html');
 
     if(!$hls_manifest){
         $error_log = str_replace(array('$AS$', '$R$'), array($current_adaptation_set, $current_representation), $reprsentation_error_log_template);
-        rename_file($session_dir . '/' . $stderr_file, $session_dir . '/' . $error_log . '.txt');
+        rename_file($session_dir . '/' . $stderr_file, $session_dir . '/Period' .$current_period.'/'. $error_log . '.txt');
         $temp_string = str_replace(array('$Template$'), array($error_log), $string_info);
-        file_put_contents($session_dir . '/' . $error_log . '.html', $temp_string);
+        file_put_contents($session_dir . '/Period' .$current_period.'/'. $error_log . '.html', $temp_string);
     }
     else{
         $error_log = str_replace('$hls_tag$', $hls_tag, $hls_error_file);
-        rename_file($session_dir . '/' . $stderr_file, $session_dir . '/' . $error_log . '.txt');
+        rename_file($session_dir . '/' . $stderr_file, $session_dir . '/Period' .$current_period.'/'. $error_log . '.txt');
     }
-    $file_location[] = relative_path($session_dir . '/' . $error_log . '.html');
+    $file_location[] = relative_path($session_dir . '/Period' .$current_period.'/'. $error_log . '.html');
     
     rename_file($session_dir . '/' . $atominfo_file, $curr_adapt_dir . '/' . $rep_dir_name . ".xml");
 
     if(file_exists($session_dir . '/' . $sample_data . '.txt'))
-        rename_file($session_dir . '/' . $sample_data . '.txt', $session_dir . '/' . $rep_dir_name . $sample_data . '.xml');
+        rename_file($session_dir . '/' . $sample_data . '.txt', $session_dir . '/Period' .$current_period.'/' . $rep_dir_name .$sample_data . '.xml');
     
     // Search for segment validation errors and save it to progress report
-    $search = file_get_contents($session_dir . '/' . $error_log . '.txt');
+    $search = file_get_contents($session_dir . '/Period' .$current_period.'/'.$error_log. '.txt');
     if (strpos($search, 'error') === false){
         if(!$hls_manifest)
-            $progress_xml->Results[0]->Period[0]->Adaptation[$current_adaptation_set]->Representation[$current_representation] = "noerror";
+            $progress_xml->Results[0]->Period[$current_period]->Adaptation[$current_adaptation_set]->Representation[$current_representation] = "noerror";
         $file_location[] = 'noerror';
     }
     else{
         if(!$hls_manifest)
-            $progress_xml->Results[0]->Period[0]->Adaptation[$current_adaptation_set]->Representation[$current_representation] = "error";
+            $progress_xml->Results[0]->Period[$current_period]->Adaptation[$current_adaptation_set]->Representation[$current_representation] = "error";
         $file_location[] = 'error'; //else notify client with error
     }
     
     if(!$hls_manifest){
-        $progress_xml->Results[0]->Period[0]->Adaptation[$current_adaptation_set]->Representation[$current_representation]->addAttribute('url', str_replace($_SERVER['DOCUMENT_ROOT'], 'http://' . $_SERVER['SERVER_NAME'], $session_dir . '/' . $error_log . '.txt'));
+        $progress_xml->Results[0]->Period[$current_period]->Adaptation[$current_adaptation_set]->Representation[$current_representation]->addAttribute('url', str_replace($_SERVER['DOCUMENT_ROOT'], 'http://' . $_SERVER['SERVER_NAME'], $session_dir . '/' . $error_log . '.txt'));
         $progress_xml->asXml(trim($session_dir . '/' . $progress_report));
     }
     return $file_location;
@@ -201,12 +201,12 @@ function run_backend($config_file){
 }
 
 function config_file_for_backend($period, $adaptation_set, $representation, $rep_dir_name){
-    global $session_dir, $config_file, $additional_flags, $suppressatomlevel, $reprsentation_mdat_template, $current_adaptation_set, $current_representation, $hls_manifest, $hls_mdat_file;
+    global $session_dir, $config_file, $additional_flags, $suppressatomlevel, $reprsentation_mdat_template, $current_adaptation_set, $current_representation, $hls_manifest, $hls_mdat_file, $current_period;
     
     $file = open_file($session_dir . '/' . $config_file, 'w');
-    fwrite($file, $session_dir . '/' . $rep_dir_name . '.mp4 ' . "\n");
+    fwrite($file, $session_dir . '/Period' .$current_period.'/'. $rep_dir_name . '.mp4 ' . "\n");
     fwrite($file, "-infofile" . "\n");
-    fwrite($file, $session_dir . '/' . $rep_dir_name . '.txt' . "\n");
+    fwrite($file, $session_dir . '/Period' .$current_period.'/'. $rep_dir_name . '.txt' . "\n");
     
     if(!$hls_manifest)
         $offsetinfo = str_replace(array('$AS$', '$R$'), array($current_adaptation_set, $current_representation), $reprsentation_mdat_template);
@@ -214,7 +214,7 @@ function config_file_for_backend($period, $adaptation_set, $representation, $rep
         $offsetinfo = $rep_dir_name . '_' . $hls_mdat_file;
     
     fwrite($file, "-offsetinfo" . "\n");
-    fwrite($file, $session_dir . '/' . $offsetinfo . '.txt' . "\n");
+    fwrite($file, $session_dir . '/Period' .$current_period.'/'. $offsetinfo . '.txt' . "\n");
     
     $flags = (!$hls_manifest) ? construct_flags($period, $adaptation_set, $representation) . $additional_flags : $additional_flags;
     $piece = explode(" ", $flags);
